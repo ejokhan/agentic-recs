@@ -1,0 +1,31 @@
+# Data & caches
+.hf_cache/
+data/raw/
+data/processed/*.parquet
+data/embeddings/*.npy
+data/embeddings/*.faiss
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+*.egg-info/
+
+# TACC / Slurm
+slurm-*.out
+slurm-*.err
+
+# Secrets
+.env
+secrets.toml
+.streamlit/secrets.toml
+
+# OS
+.DS_Store
+
+# Additional data exclusions
+data/embeddings/*.pkl
+data/embeddings/*.json
+data/eval/
+logs/
