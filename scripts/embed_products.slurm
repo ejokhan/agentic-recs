@@ -15,7 +15,7 @@ source /work/10655/ejokhan123/ls6/miniconda3/bin/activate
 conda activate rag
 export TOKENIZERS_PARALLELISM=false
 export OMP_NUM_THREADS=4
-export HF_HOME=$PWD/.hf_cache
+export HF_HOME=/work/10655/ejokhan123/ls6/hydro-rag/.hf_cache
 
 echo "=== Node: $(hostname) ==="
 echo "=== Start: $(date) ==="

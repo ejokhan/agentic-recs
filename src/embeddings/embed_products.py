@@ -21,7 +21,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 MODEL_NAME = "BAAI/bge-large-en-v1.5"
 BATCH_SIZE = 64  # fits easily on A100 40GB
-CACHE_DIR = Path(".hf_cache").absolute()
+CACHE_DIR = Path("/work/10655/ejokhan123/ls6/hydro-rag/.hf_cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
 print(f"PyTorch: {torch.__version__}")
