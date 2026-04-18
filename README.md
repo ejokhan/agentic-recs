@@ -199,7 +199,7 @@ This project is designed to demonstrate applied ML skills across recommendation 
 University of Vermont · Water Resources Institute
 [GitHub](https://github.com/ejokhan) · [Google Scholar](https://scholar.google.com/citations?user=qHTMlKIAAAAJ&hl=en)
 
-Built on TACC Lonestar6 supercomputer through the NSF NAIRR Pilot program.
+Built on TACC Lonestar6 supercomputer.
 
 ## License
 
