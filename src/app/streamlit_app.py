@@ -111,6 +111,8 @@ with st.sidebar:
     4. **Reranks** — LLM scores relevance
     
     Built with LangGraph, Groq (Llama 3.3 70B), and FAISS.
+    
+    **Note:** This demo uses BM25 retrieval for deployment efficiency. The full pipeline (Dense BGE + Hybrid RRF fusion) achieves NDCG@10 = 0.757 and runs on GPU — see [GitHub](https://github.com/ejokhan/agentic-recs) for the complete implementation.
     """)
     
     st.header("Evaluation Results")
