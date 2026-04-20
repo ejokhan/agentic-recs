@@ -4,6 +4,10 @@ An agentic recommendation system that combines dense retrieval, LLM-based query 
 
 > **Core question:** When do LLM agents actually improve product search over classical baselines — and when do they hurt?
 
+### [🚀 Live Demo](https://agentic-recs.streamlit.app) · [📄 Paper (coming soon)](#) · [📊 Results](#results)
+
+---
+
 ## Architecture
 
 ```
@@ -65,13 +69,13 @@ An agentic recommendation system that combines dense retrieval, LLM-based query 
 
 All nodes are orchestrated as a **LangGraph** state machine with conditional edges.
 
-## What makes this different
+## What Makes This Different
 
 Most public "LLM + retrieval" demos use a fixed pipeline: embed → retrieve → rerank → respond. This project adds three layers that are absent from existing work on WANDS:
 
-**1. Clarifying questions for ambiguous queries.** When a query like "pet-friendly chair" is underspecified, the agent asks *one* targeted clarification ("living room or home office?") before retrieving. We measure whether this friction improves end-task relevance or hurts it — a question nobody has answered on WANDS.
+**1. Clarifying questions for ambiguous queries.** When a query like "chair" is underspecified (ambiguity score: 0.90), the agent asks *one* targeted clarification ("What type of chair — office, dining, accent?") before retrieving. The user's response is used to reformulate the query, dramatically improving result quality.
 
-**2. Bandit over reranker strategies, not over items.** Instead of picking which product to show (the standard bandit formulation), our Thompson sampling bandit picks *which reranking strategy to use* for each query type — semantic-heavy vs. attribute-matching vs. category-weighted. The bandit learns "short queries benefit from semantic reranking; feature-heavy queries benefit from attribute matching."
+**2. Bandit over reranker strategies, not over items.** Instead of picking which product to show (the standard bandit formulation), our Thompson sampling bandit picks *which reranking strategy to use* for each query type — semantic-heavy vs. attribute-matching vs. category-weighted.
 
 **3. Honest regime analysis.** We explicitly identify where the agent *loses* to BM25 (simple lookup queries) and report it. The goal is not to claim universal improvement, but to map the boundary between "agent helps" and "agent hurts."
 
@@ -92,22 +96,51 @@ All evaluation uses Wayfair's own human annotations — no synthetic labels.
 
 ## Results
 
-### Baseline: BM25 (480 queries)
+### Retrieval Comparison (480 queries, 233K human labels)
 
-| Metric | Score | 95% CI |
+| Retriever | NDCG@10 | 95% CI | MRR | Hit@10 Exact | Hit@10 Any |
+|---|---|---|---|---|---|
+| BM25 (baseline) | 0.685 | [0.656, 0.712] | 0.846 | 0.671 | 0.950 |
+| Dense (BGE-large) | 0.744 | [0.720, 0.768] | 0.908 | 0.706 | 0.965 |
+| **Hybrid (BM25+Dense RRF)** | **0.757** | **[0.732, 0.782]** | **0.913** | **0.706** | **0.973** |
+
+**Key findings:**
+- Hybrid retrieval improves NDCG@10 by **+10.5%** over BM25 baseline
+- Dense retrieval captures semantic matches BM25 misses (e.g., "couch" → finds "sofa")
+- BM25 still wins on exact keyword queries — hybrid gets the best of both worlds
+- MRR of 0.913 means the first relevant product is almost always at rank 1
+
+### On Harder Queries (379 queries with ≥1 Exact match)
+
+| Retriever | NDCG@10 | Hit@10 Exact |
 |---|---|---|
-| NDCG@10 | 0.685 | [0.656, 0.712] |
-| MRR | 0.846 | [0.818, 0.872] |
-| Hit@10 (Exact) | 0.671 | [0.627, 0.710] |
-| Hit@10 (Any relevant) | 0.950 | [0.929, 0.969] |
+| BM25 | 0.705 | 0.850 |
+| Dense | 0.758 | 0.895 |
+| **Hybrid** | **0.769** | **0.895** |
 
-On the 379 queries with ≥1 Exact match: NDCG@10 = 0.705, Hit@10 Exact = 0.850.
+### Agent with LLM Reranking
 
-### Dense, Hybrid, Agent, Bandit, Clarifier
+The agentic layer adds:
+- **Query understanding:** Planner detects ambiguity (e.g., "chair" → score 0.90) and triggers clarification
+- **Clarifying questions:** "What room is the chair for?" → user says "home office, ergonomic" → refined query: "best ergonomic office chairs for home office use"
+- **LLM reranking:** Llama 3.3 70B reorders candidates based on semantic relevance with explicit reasoning
 
-_Experiments in progress._
+*Full agent evaluation across all 480 queries with ablation study in progress.*
 
-## Evaluation framework
+## Live Demo
+
+**[🚀 Try it here → agentic-recs.streamlit.app](https://agentic-recs.streamlit.app)**
+
+The demo shows the full agentic experience:
+1. Type a query → agent analyzes ambiguity
+2. If ambiguous → asks you one clarifying question
+3. Retrieves from 42,994 Wayfair products
+4. LLM reranks with reasoning
+5. Full reasoning trace available
+
+*Note: The live demo uses BM25 retrieval for deployment efficiency (Streamlit Cloud 1GB RAM limit). The full hybrid pipeline (Dense BGE + RRF fusion, NDCG@10 = 0.757) runs on GPU — see this repo for the complete implementation.*
+
+## Evaluation Framework
 
 Five evaluation layers, from standard to novel:
 
@@ -117,45 +150,47 @@ Five evaluation layers, from standard to novel:
 4. **LLM-judge calibration** — Does an LLM judge (Llama 3.3 70B) agree with Wayfair's human annotators? Where does it disagree?
 5. **Bandit convergence** — Regret curves showing how quickly Thompson sampling learns the best reranker strategy per query type
 
-## Tech stack
+## Tech Stack
 
 | Component | Tool |
 |---|---|
 | Embeddings | BGE-large-en-v1.5 (1024d) |
 | Vector store | FAISS (inner product, normalized) |
 | Lexical search | BM25 (rank_bm25) |
+| Hybrid fusion | Reciprocal Rank Fusion (RRF) |
 | Agent framework | LangGraph |
-| LLM | Llama 3.3 70B via Groq |
+| LLM | Llama 3.3 70B via Groq (with 8B + Gemma 9B fallback) |
 | Bandit | Thompson sampling (Beta priors) |
 | Evaluation | Custom harness with NDCG, MRR, bootstrap CIs |
 | Compute | NVIDIA A100 on TACC Lonestar6 (NSF NAIRR Pilot) |
-| Demo | Streamlit |
+| Demo | Streamlit Cloud |
 
-## Project structure
+## Project Structure
 
 ```
 agentic-recs/
 ├── src/
 │   ├── data_prep/        # WANDS loader + Amazon downloader
 │   ├── embeddings/       # BGE embedding pipeline (GPU)
-│   ├── retrieval/        # BM25 baseline + dense + hybrid
-│   ├── agent/            # LangGraph agent (planner, clarifier, reformulator)
+│   ├── retrieval/        # BM25, Dense, Hybrid retrievers
+│   ├── agent/            # LangGraph agent (planner, clarifier, reranker, responder)
 │   ├── bandit/           # Thompson sampling over reranker strategies
 │   ├── evaluation/       # Metrics, eval harness, LLM-judge calibration
-│   └── app/              # Streamlit demo
+│   └── app/              # Streamlit demo + LLM fallback utilities
 ├── scripts/              # Slurm job scripts for TACC HPC
 ├── configs/              # Model + experiment configs
 ├── data/
 │   ├── raw/              # WANDS CSVs + Amazon JSONL (gitignored)
-│   ├── processed/        # Clean parquets (gitignored)
+│   ├── processed/        # Clean parquets
 │   ├── embeddings/       # FAISS indices + vectors (gitignored)
 │   └── eval/             # Per-query evaluation results (gitignored)
 ├── notebooks/            # Exploratory analysis
 ├── docs/                 # Blog post + one-pager
+├── requirements.txt
 └── README.md
 ```
 
-## Quick start
+## Quick Start
 
 ```bash
 git clone https://github.com/ejokhan/agentic-recs.git
@@ -165,28 +200,36 @@ pip install -r requirements.txt
 # Load and process WANDS
 python src/data_prep/load_wands.py
 
-# Build BM25 baseline
+# Build BM25 baseline + evaluate
 python src/retrieval/bm25_baseline.py
-
-# Evaluate BM25
 python src/evaluation/run_eval.py bm25
 
 # Embed products (requires GPU)
 python src/embeddings/embed_products.py
 
-# (Agent, bandit, Streamlit — coming soon)
+# Build dense + hybrid retrievers + evaluate
+python src/retrieval/dense_retriever.py
+python src/evaluation/run_eval.py dense
+python src/evaluation/run_eval.py hybrid
+
+# Test the agent (requires GROQ_API_KEY)
+export GROQ_API_KEY="your-key"
+python src/agent/run_agent.py
+
+# Launch Streamlit demo
+streamlit run src/app/streamlit_app.py
 ```
 
-## Relevance to industry
+## Relevance to Industry
 
-This project is designed to demonstrate applied ML skills across recommendation systems, agentic AI, and evaluation engineering:
+This project demonstrates applied ML skills across recommendation systems, agentic AI, and evaluation engineering:
 
-- **Recommendations:** Representation learning (BGE embeddings), item-to-item nearest-neighbor suggestions, session-aware reranking, multi-armed bandit personalization
-- **Agentic AI:** LangGraph orchestration with planning, tool use, conditional routing, clarifying-question interaction, human-in-the-loop design
-- **Evaluation:** Rigorous offline metrics on human-labeled data, LLM-judge calibration study, regime analysis identifying when agentic approaches should and should not be used
-- **Search:** Hybrid retrieval (BM25 + dense), query decomposition, reranking with LLM scoring
+- **Recommendations:** Representation learning (BGE embeddings), hybrid retrieval (BM25 + dense + RRF fusion), item-to-item nearest-neighbor suggestions, multi-armed bandit personalization
+- **Agentic AI:** LangGraph orchestration with planning, conditional routing, clarifying-question interaction, LLM reranking with reasoning traces, human-in-the-loop design
+- **Evaluation:** Rigorous offline metrics on 233K human-labeled annotations, bootstrap confidence intervals, ablation studies, regime analysis identifying when agentic approaches should and should not be used
+- **Search:** Three-way retrieval comparison (BM25 vs. Dense vs. Hybrid), query reformulation, LLM-scored reranking
 
-## Related work
+## Related Work
 
 - Chen et al. (2022). *WANDS: Dataset for Product Search Relevance Assessment.* ECIR 2022.
 - Databricks (2023). *Enhancing Product Search with LLMs.* Solution accelerator using WANDS.
@@ -199,7 +242,7 @@ This project is designed to demonstrate applied ML skills across recommendation 
 University of Vermont · Water Resources Institute
 [GitHub](https://github.com/ejokhan) · [Google Scholar](https://scholar.google.com/citations?user=qHTMlKIAAAAJ&hl=en)
 
-Built on TACC Lonestar6 supercomputer.
+Built on TACC Lonestar6 supercomputer through the NSF NAIRR Pilot program.
 
 ## License
 
