@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 """
 Agentic Recs — Streamlit Demo
 Product search with LLM-powered planning, clarification, and reranking.
