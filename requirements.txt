@@ -1,0 +1,8 @@
+streamlit
+pandas
+numpy
+pyarrow
+rank-bm25
+langchain-groq
+langchain
+langgraph
