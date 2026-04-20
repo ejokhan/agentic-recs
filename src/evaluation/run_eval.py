@@ -1,11 +1,16 @@
 """Evaluation harness — score any retriever against WANDS human labels."""
 import argparse
+import os
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["RAYON_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from src.evaluation.metrics import ndcg_at_k, mrr, hit_at_k, bootstrap_ci
@@ -69,7 +74,7 @@ def score_retriever(retriever, name, k=K):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("retriever", choices=["bm25", "dense"])
+    parser.add_argument("retriever", choices=["bm25", "dense", "hybrid"])
     args = parser.parse_args()
 
     if args.retriever == "bm25":
@@ -77,8 +82,13 @@ def main():
         r = BM25Retriever.load_or_build()
         score_retriever(r, name="bm25")
     elif args.retriever == "dense":
-        print("Dense retriever not yet implemented — waiting for embeddings job.")
-        sys.exit(1)
+        from src.retrieval.dense_retriever import DenseRetriever
+        r = DenseRetriever.load_or_build()
+        score_retriever(r, name="dense")
+    elif args.retriever == "hybrid":
+        from src.retrieval.hybrid_retriever import HybridRetriever
+        r = HybridRetriever.load_or_build()
+        score_retriever(r, name="hybrid")
 
 
 if __name__ == "__main__":

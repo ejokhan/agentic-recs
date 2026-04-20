@@ -140,13 +140,13 @@ def retriever_node(state: AgentState) -> dict:
     """
     Retrieve top-K products using BM25 (swaps to dense/hybrid later).
     """
-    from src.retrieval.bm25_baseline import BM25Retriever
+    from src.retrieval.hybrid_retriever import HybridRetriever
     import pandas as pd
 
     retrieval_query = state.get("retrieval_query", state["query"])
     trace = state.get("reasoning_trace", [])
 
-    retriever = BM25Retriever.load_or_build()
+    retriever = HybridRetriever.load_or_build()
     products = pd.read_parquet("data/processed/products.parquet").set_index("product_id")
 
     top_ids, top_scores = retriever.retrieve(retrieval_query, k=20)
